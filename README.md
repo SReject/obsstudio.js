@@ -45,7 +45,7 @@ If a native obsstudio item isn't listen then it has been removed or at-the-least
 > > `.STOPPING` as Number(3)  
 > > Indicates streaming/recording is stopping.
 
-> **`.STATEBYINDEX`** as Object
+> **`.STATEBYINDEX`** as Object  
 > Reversed aliasing of `.STATE`  
 > Input the STATE value and get the value's `.STATE` name
 
@@ -57,15 +57,18 @@ If a native obsstudio item isn't listen then it has been removed or at-the-least
 
 > **`.streamState()`** as STATE (see `.STATE` above)  
 > Returns the current streaming state  
-> Only available after the `ready` event has triggered
+> Only available after the `ready` event has triggered.  
+> Only filled in after an initial streaming-state event is emitted from the default obsstudio object
 
 > **`.recordState()`** as STATE (see `.STATE` above)   
 > Returns the current recording state  
-> Only available after the `ready` event has triggered
+> Only available after the `ready` event has triggered.  
+> Only filled in after an initial recording-state event is emitted from the default obsstudio object
 
 > **`.isVisible()`** as Boolean
 > Returns the current visibility state  
-> Only available after the `ready` event has triggered and the first onVisibilityChange event occurs from obs
+> Only available after the `ready` event has triggered.  
+> Only filled in after an initial visibility change event occurs from the default obsstudio object
 
 > **`.isReady()`** as Boolean  
 > Returns the current ready state
