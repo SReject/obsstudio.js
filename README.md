@@ -15,10 +15,10 @@ obsstudio.js alters the default members of `window.obsstudio` in the following w
 # Using  
 Include obsstudio.js or obsstudio.min.js in your html file prior to scripts that make use of it:
 
-```
+```html
 <html>
     <head>
-        <!-- Other head stuff ->
+        <!-- Other head stuff -->
 
         <script src="./obsstudio.min.js"></script>
         <!-- Other scripts that make use of the modified obsstudio object -->
