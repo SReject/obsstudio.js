@@ -358,7 +358,7 @@
         }
 
         // Register the custom onVisibilityChange callback
-        Object.defineProperty(obs, 'onVisibilityChange' {
+        Object.defineProperty(obs, 'onVisibilityChange', {
             writable: false,
             enumerable: true,
 
