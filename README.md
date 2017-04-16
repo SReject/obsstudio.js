@@ -1,9 +1,7 @@
 # obsstudio.js  
-
 Normalizes [OBS Studio BrowserSource](https://github.com/kc5nra/obs-browser)'s JS interface . Note that it drastically modifies the behaviors of the default obsstudio object so do **not** mix scripts where some make use of obsstudio.js and others make use of the default obsstudio behavior.
 
-## Using
-
+# Using  
 Include obsstudio.js in your html file prior to scripts that make use of it:
 
 ```
@@ -20,7 +18,7 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 </html>
 ```
 
-## Interface
+# Interface  
 
 ### Properties
 
@@ -32,8 +30,8 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 
 ### Methods
 
-> **`.getCurrentScene()`** as String  
-> Returns the current scene  
+> **`.getCurrentScene()`** as SceneObject  (see SceneObject below)
+> Returns the current scene
 > Only available after the `ready` event has triggered
 
 > **`.isVisible()`** as Boolean
@@ -76,3 +74,48 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 > **`.onceOff(@eventName, @handler)`**  
 > Alias for `.off(@eventName, @handler, true)`  
 > Returns the obsstudio object instance so method-chaining can occur.
+
+### Events  
+Event handlers are called against the `obsstudio` object so as in typical cases `this` is bound to the obsstudio instance.  
+Handlers for the same event are called in the other they were added; first-added: first-called.  
+
+> **`ready`**  
+> Emitted when obsstudio.js has finished initializing  
+>  
+> Handlers added to this event are added as a one-time firing handler   
+> Handlers added after this event triggers will be immediately called.
+
+> **`sceneChange`** with `@SceneObject`  
+> > `@SceneObject` - See SceneObject below  
+>  
+> Emitted when the scene changes
+
+> **`visibilityChange` with `@visibilityState`  
+> > `@visibilityState` as Boolean  
+> > `true` if the BrowserSource is visibile, `false` otherwise  
+>  
+> Emitted when the BrowserSource visibility changes.
+
+> **`streamStarting`**  
+> Emitted when streaming is starting
+
+> **`streamStarted`**  
+> Emitted when streaming is started
+
+> **`streamStopping`**  
+> Emitted when streaming is being stopped
+
+> **`streamStopped`**  
+> Emitted when streaming has stopped
+
+> **`recordStarting`**  
+> Emitted when recording is starting
+
+> **`recordStarted`**  
+> Emitted when recording is started
+
+> **`recordStopping`**  
+> Emitted when recording is being stopped
+
+> **`recordStopped`**  
+> Emitted when recording has stopped
