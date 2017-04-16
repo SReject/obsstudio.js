@@ -174,7 +174,7 @@ Events are formatted as a urlencoded queryString and must always contain an `eve
 >  
 > Imitates a scene change event
 
-> `visibilityChange`
+> `visibilityChange`  
 > Format: `event=visibilityChange&state=@State`  
 > > `@State`
 > > true|false indicating the new visibility state  
