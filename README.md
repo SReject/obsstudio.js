@@ -30,8 +30,8 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 
 ### Methods
 
-> **`.getCurrentScene()`** as SceneObject  (see SceneObject below)
-> Returns the current scene
+> **`.getCurrentScene()`** as SceneObject  (see SceneObject below)  
+> Returns the current scene  
 > Only available after the `ready` event has triggered
 
 > **`.isVisible()`** as Boolean
