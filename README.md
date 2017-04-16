@@ -1,5 +1,5 @@
 # obsstudio.js  
-Normalizes [OBS Studio BrowserSource](https://github.com/kc5nra/obs-browser)'s JS interface.  
+Normalizes and extends [OBS Studio BrowserSource](https://github.com/kc5nra/obs-browser)'s JS interface.  
 
 # Requirements
 [OBS-Browser](https://github.com/kc5nra/obs-browser/releases) (BrowserSource) 1.29.0 or later.  
