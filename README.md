@@ -87,10 +87,11 @@ Handlers for the same event are called in the other they were added; first-added
 
 > **`sceneChange`** with `@SceneObject`  
 > > `@SceneObject` - See SceneObject below  
+> > Contains data related to the scene that was switched to.  
 >  
 > Emitted when the scene changes
 
-> **`visibilityChange` with `@visibilityState`  
+> **`visibilityChange`** with `@visibilityState`  
 > > `@visibilityState` as Boolean  
 > > `true` if the BrowserSource is visibile, `false` otherwise  
 >  
@@ -119,3 +120,19 @@ Handlers for the same event are called in the other they were added; first-added
 
 > **`recordStopped`**  
 > Emitted when recording has stopped
+
+### `SceneObject`
+Contains information related to a scene.
+
+> `.name` as String  
+> The name of the scene
+
+> `.width` as Number  
+> The width, in pixels, of the scene
+
+> `.height` as Number  
+> The height, in pixels, of the scene
+
+> `.previousScene` as SceneObject  
+> The previous scene  
+> Only included in the `sceneChange` event
