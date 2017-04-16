@@ -26,12 +26,10 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 ```
 
 # Interface  
-All interface items listed below are added directly to the `window.obsstudio` object.  
+All interface members listed below are added to the `window.obsstudio` object.  
+Properties and methods are read-only.  
 
 ### Properties
-
-> **`.pluginVersion`** as String  
-> The BrowserSource Version
 
 > **`.extensionVersion`** as String  
 > The obsstudio.js version
