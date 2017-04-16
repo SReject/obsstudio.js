@@ -1,6 +1,10 @@
 # obsstudio.js  
 Normalizes [OBS Studio BrowserSource](https://github.com/kc5nra/obs-browser)'s JS interface.  
 
+# Requirements
+[OBS-Browser](https://github.com/kc5nra/obs-browser/releases) (BrowserSource) 1.29.0 or later.  
+This comes packaged with OBS Studio Full install.
+
 # Deviations  
 obsstudio.js alters the default members of `window.obsstudio` in the following ways:
 
