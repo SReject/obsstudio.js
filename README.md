@@ -19,6 +19,8 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 ```
 
 # Interface  
+All interface items listed below are added directly to the `window.obsstudio` object.  
+If a native obsstudio item isn't listen then it has been removed or at-the-least should not be used.
 
 ### Properties
 
@@ -28,10 +30,37 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 > **`.extensionVersion`** as String  
 > The obsstudio.js version
 
+> **`.STATE`** as Object  
+> State constants used to indicate the state of streaming and recording  
+>  
+> > `.INACTIVE` as Number(0)  
+> > Indicates streaming/recording is inactive or stopped  
+>  
+> > `.STARTING` as Number(1)  
+> > Indicates streaming/recording is starting.  
+>  
+> > `.STARTED` as Number(2)  
+> > Indicates streaming/recording has started.    
+>  
+> > `.STOPPING` as Number(3)  
+> > Indicates streaming/recording is stopping.
+
+> **`.STATEBYINDEX`** as Object
+> Reversed aliasing of `.STATE`  
+> Input the STATE value and get the value's `.STATE` name
+
 ### Methods
 
-> **`.getCurrentScene()`** as SceneObject  (see SceneObject below)  
+> **`.currentScene()`** as SceneObject  (see SceneObject below)  
 > Returns the current scene  
+> Only available after the `ready` event has triggered
+
+> **`.streamState()`** as STATE (see `.STATE` above)  
+> Returns the current streaming state  
+> Only available after the `ready` event has triggered
+
+> **`.recordState()`** as STATE (see `.STATE` above)   
+> Returns the current recording state  
 > Only available after the `ready` event has triggered
 
 > **`.isVisible()`** as Boolean
@@ -97,29 +126,17 @@ Handlers for the same event are called in the other they were added; first-added
 >  
 > Emitted when the BrowserSource visibility changes.
 
-> **`streamStarting`**  
-> Emitted when streaming is starting
+> **`streamState`**  with `@STATE`  
+> > `@STATE` - See `.STATE` above  
+> > Indicates the state of streaming  
+>  
+> Emitted when streaming state changes
 
-> **`streamStarted`**  
-> Emitted when streaming is started
-
-> **`streamStopping`**  
-> Emitted when streaming is being stopped
-
-> **`streamStopped`**  
-> Emitted when streaming has stopped
-
-> **`recordStarting`**  
-> Emitted when recording is starting
-
-> **`recordStarted`**  
-> Emitted when recording is started
-
-> **`recordStopping`**  
-> Emitted when recording is being stopped
-
-> **`recordStopped`**  
-> Emitted when recording has stopped
+> **`recordState`**  with `@STATE`  
+> > `@STATE` - See `.STATE` above  
+> > Indicates the state of recording  
+>  
+> Emitted when the recording state changes
 
 ### `SceneObject`
 Contains information related to a scene.
@@ -136,6 +153,7 @@ Contains information related to a scene.
 > `.previousScene` as SceneObject  
 > The previous scene  
 > Only included in the `sceneChange` event
+
 
 # Non OBS-Studio Abstraction  
 Included with the script is a non obs-studio abstraction so the script can be used outside of an OBS-Studio BrowserSource.  
@@ -181,42 +199,16 @@ Events are formatted as a urlencoded queryString and must always contain an `eve
 >  
 > Imitates a visibility change event
 
-> `streamStarting`  
-> Format: `event=streamStarting`
+> `streamState`  
+> Format: `event=streamState&state=@State`  
+> > `@State`  
+> > A `.STATE` value indicating the stream state (see `.STATE` above)  
 >  
-> Imitates a stream starting event
+> Imitates a streaming state change event
 
-> `streamStarted`  
-> Format: `event=streamStarted`
+> `recordState`  
+> Format: `event=recordState&state=@State`  
+> > `@State`  
+> > A `.STATE` value indicating the stream state (see `.STATE` above)  
 >  
-> Imitates a stream started event
-
-> `streamStopping`  
-> Format: `event=streamStopping`
->  
-> Imitates a stream stopping event
-
-> `streamStopped`  
-> Format: `event=streamStopped`
->  
-> Imitates a stream stopped event
-
-> `recordStarting`  
-> Format: `event=recordStarting`
->  
-> Imitates a record starting event
-
-> `recordStarted`  
-> Format: `event=recordStarted`
->  
-> Imitates a record started event
-
-> `recordStopping`  
-> Format: `event=recordStopping`
->  
-> Imitates a record stopping event
-
-> `recordStopped`  
-> Format: `event=recordStopped`
->  
-> Imitates a record stopped event
+> Imitates a recording state change event
