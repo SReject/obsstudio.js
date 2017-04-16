@@ -203,14 +203,7 @@
                 // processing loop so thrown errors do not halt this execution
                 // or the execution of other handlers
                 setTimeout(function callNextHandler() {
-                    var handler = callbacks.shift(),
-                        evtData;
-
-                    // If there's data to be passed to the event, clone
-                    // it and add it to the event data
-                    if (data !== undefined) {
-                        evtData.data = JSON.parse(JSON.stringify(data));
-                    }
+                    var handler = callbacks.shift();
 
                     // if there's still more handlers, start a timeout
                     // to handle them
@@ -219,7 +212,10 @@
                     }
 
                     // call the current handler function
-                    handler.call(obs, evtData);
+                    // clone the data via JSON so the handler function's
+                    // interactions with the data won't alter it for subsequent
+                    // handlers
+                    handler.call(obs, data !== undefined ? JSON.parse(JSON.stringify(data)) : undefined);
                 }, 0);
 
             }
