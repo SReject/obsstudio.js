@@ -1,5 +1,12 @@
 # obsstudio.js  
-Normalizes [OBS Studio BrowserSource](https://github.com/kc5nra/obs-browser)'s JS interface . Note that it drastically modifies the behaviors of the default obsstudio object so do **not** mix scripts where some make use of obsstudio.js and others make use of the default obsstudio behavior.
+Normalizes [OBS Studio BrowserSource](https://github.com/kc5nra/obs-browser)'s JS interface.  
+
+# Deviations  
+obsstudio.js alters the default members of `window.obsstudio` in the following ways:
+
+* `.pluginVersion` is made read only.
+* `.getCurrentScene()` is made read only.
+* `.onVisibilityChange` is replaced with a read-only function. If a callback was defined before obsstudio.js is loaded, it is removed and added as an event handler instead. Attempts to set the `onVisbilityChange` callback after obsstudio.js is loaded are added as an event handler instead. The drawback is these callbacks cannot be removed and this behavior is open for discussion.  
 
 # Using  
 Include obsstudio.js in your html file prior to scripts that make use of it:
@@ -20,7 +27,6 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 
 # Interface  
 All interface items listed below are added directly to the `window.obsstudio` object.  
-If a native obsstudio item isn't listen then it has been removed or at-the-least should not be used.
 
 ### Properties
 
