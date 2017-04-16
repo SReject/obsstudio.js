@@ -24,51 +24,55 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 
 ### Properties
 
-> `.pluginVersion` as String  
+> **`.pluginVersion`** as String  
 > The BrowserSource Version
 
-> `.extensionVersion` as String  
+> **`.extensionVersion`** as String  
 > The obsstudio.js version
 
 ### Methods
 
-> `.getCurrentScene()` as String  
+> **`.getCurrentScene()`** as String  
 > Returns the current scene  
 > Only available after the `ready` event has triggered
 
-> `.isVisible()` as Boolean
+> **`.isVisible()`** as Boolean
 > Returns the current visibility state  
 > Only available after the `ready` event has triggered and the first onVisibilityChange event occurs from obs
 
-> `.isReady()` as Boolean  
+> **`.isReady()`** as Boolean  
 > Returns the current ready state
 
-> `.on(@eventName, @handler, @once)`  
-> > @eventName as String - Required  
+> **`.on(@eventName, @handler, @once)`**  
+> > `@eventName` as String - Required  
 > > The event to listen for  
 >  
-> > @handler as Function - Required  
+> > `@handler` as Function - Required  
 > > The function to be called when the event is emitted  
 >  
-> > @once as Boolean - Optional  
+> > `@once` as Boolean - Optional  
 > > If true the event handler will be removed after the event is next triggered  
 >  
-> Listens for the specified event and when it occurs call the handler function
+> Listens for the specified event and when it occurs call the handler function.  
+> Returns the obsstudio object instance so method-chaining can occur.
 
-> `.off(@eventName, @handler, @once)`  
-> > @eventName as String - Required  
+> **`.off(@eventName, @handler, @once)`**  
+> > `@eventName` as String - Required  
 > > The event to remove the handler from  
 >  
-> > @handler as Function - Required  
+> > `@handler` as Function - Required  
 > > The exact handler function that was used to create the event listener.  
 >  
-> > @once as Boolean - Optional  
+> > `@once` as Boolean - Optional  
 > > The value given when the listener was created.  
 >  
-> Removes the first matching handler.
+> Removes the first matching handler.  
+> Returns the obsstudio object instance so method-chaining can occur.
 
-> `.once(@eventName, @handler)`  
-> Alias for `.on(@eventName, @handler, true)`
+> **`.once(@eventName, @handler)`**  
+> Alias for `.on(@eventName, @handler, true)`  
+> Returns the obsstudio object instance so method-chaining can occur.
 
-> `.onceOff(@eventName, @handler)`  
-> Alias for `.off(@eventName, @handler, true)`
+> **`.onceOff(@eventName, @handler)`**  
+> Alias for `.off(@eventName, @handler, true)`  
+> Returns the obsstudio object instance so method-chaining can occur.
