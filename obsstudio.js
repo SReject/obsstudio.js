@@ -7,8 +7,6 @@
     }
 
     var obs                   = window.obsstudio || {},
-        obsOnVisibilityChange = obs.onVisibilityChange,
-        obsGetCurrentScene    = obs.getCurrentScene,
         eventHandlers         = {},
         currentScene          = {}, // scene tracking variable
         visible               = null, // visibility tracking variable
@@ -20,7 +18,7 @@
     Object.defineProperty(obs, 'extensionVersion', {
         writable: false,
         enumerable: true,
-        value: '0.0.4'
+        value: '0.0.5'
     });
 
     // Add: STATE contants
@@ -359,7 +357,6 @@
 
         // Register the custom onVisibilityChange callback
         Object.defineProperty(obs, 'onVisibilityChange', {
-            writable: false,
             enumerable: true,
 
             // If another script attempts to define an onVisibilityChange
@@ -370,12 +367,12 @@
                 if (typeof callback === 'function') {
                     obs.on('visibilityChange', callback);
                 }
-                return obs;
             },
-
-            value: function (state) {
-                visible = state;
-                obs.emit('visibilityChange', state);
+            get: function () {
+                return function (state) {
+                    visible = state;
+                    obs.emit('visibilityChange', visible);
+                };
             }
         });
 
@@ -443,6 +440,7 @@
                 obs.emit('ready');
             }
         });
+
 
     // if running in a normal browser; polyfill various functionality
     } else {
