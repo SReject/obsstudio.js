@@ -136,3 +136,87 @@ Contains information related to a scene.
 > `.previousScene` as SceneObject  
 > The previous scene  
 > Only included in the `sceneChange` event
+
+# Non OBS-Studio Abstraction  
+Included with the script is a non obs-studio abstraction so the script can be used outside of an OBS-Studio BrowserSource.  
+The abstraction makes use of web browers's `location.hash` to retrieve events.  
+
+### Issuing events
+Events are issued via changes to `location.hash`.  
+Events are formatted as a urlencoded queryString and must always contain an `event` parameter.  
+
+### Events
+
+> `init`  
+> Format: `event=init&scene=@name&width=@width&height=@height`  
+> > `@name`  
+> > The name of the scene  
+>  
+> > `@width`  
+> > The width of the scene  
+>  
+> > `@height`  
+> > The height of the scene  
+>
+> Indicates the obs abstraction should be initialized.   
+> **Must** be called with the page load.
+
+> `sceneChange`  
+> Format: `event=sceneChange&scene=@name&width=@width&height=@height`  
+> > `@name`  
+> > The name of the scene  
+>  
+> > `@width`  
+> > The width of the scene  
+>  
+> > `@height`  
+> > The height of the scene  
+>  
+> Imitates a scene change event
+
+> `visibilityChange`
+> Format: `event=visibilityChange&state=@State`  
+> > `@State`
+> > true|false indicating the new visibility state  
+>  
+> Imitates a visibility change event
+
+> `streamStarting`  
+> Format: `event=streamStarting`
+>  
+> Imitates a stream starting event
+
+> `streamStarted`  
+> Format: `event=streamStarted`
+>  
+> Imitates a stream started event
+
+> `streamStopping`  
+> Format: `event=streamStopping`
+>  
+> Imitates a stream stopping event
+
+> `streamStopped`  
+> Format: `event=streamStopped`
+>  
+> Imitates a stream stopped event
+
+> `recordStarting`  
+> Format: `event=recordStarting`
+>  
+> Imitates a record starting event
+
+> `recordStarted`  
+> Format: `event=recordStarted`
+>  
+> Imitates a record started event
+
+> `recordStopping`  
+> Format: `event=recordStopping`
+>  
+> Imitates a record stopping event
+
+> `recordStopped`  
+> Format: `event=recordStopped`
+>  
+> Imitates a record stopped event
