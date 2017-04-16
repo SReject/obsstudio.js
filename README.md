@@ -13,14 +13,14 @@ obsstudio.js alters the default members of `window.obsstudio` in the following w
 * `.onVisibilityChange` is replaced with a read-only function. If a callback was defined before obsstudio.js is loaded, it is removed and added as an event handler instead. Attempts to set the `onVisbilityChange` callback after obsstudio.js is loaded are added as an event handler instead. The drawback is these callbacks cannot be removed and this behavior is open for discussion.  
 
 # Using  
-Include obsstudio.js in your html file prior to scripts that make use of it:
+Include obsstudio.js or obsstudio.min.js in your html file prior to scripts that make use of it:
 
 ```
 <html>
     <head>
         <!-- Other head stuff ->
 
-        <script src="./obsstudio.js"></script>
+        <script src="./obsstudio.min.js"></script>
         <!-- Other scripts that make use of the modified obsstudio object -->
     </head>
     <body>
