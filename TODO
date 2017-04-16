@@ -1,3 +1,0 @@
-Encapsulate all streaming state events under a single streamingState event
-Encapsulate all recording state events under a single recordingState event
-Track streaming/recording states

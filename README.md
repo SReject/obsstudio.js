@@ -139,7 +139,7 @@ Contains information related to a scene.
 
 # Non OBS-Studio Abstraction  
 Included with the script is a non obs-studio abstraction so the script can be used outside of an OBS-Studio BrowserSource.  
-The abstraction makes use of web browers's `location.hash` to retrieve events.  
+The abstraction makes use of web browers' `location.hash` to retrieve events.  
 
 ### Issuing events
 Events are issued via changes to `location.hash`.  

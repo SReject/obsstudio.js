@@ -10,11 +10,28 @@
         obsOnVisibilityChange = obs.onVisibilityChange,
         obsGetCurrentScene    = obs.getCurrentScene,
         eventHandlers         = {},
-        currentScene          = {},
-        visible               = null,
-        ready                 = false;
+        currentScene          = {}, // scene tracking variable
+        visible               = null, // visibility tracking variable
+        streamState           = null, // stream-state tracking variable
+        recordState           = null, // record-state tracking variable
+        ready                 = false; // ready-state tracking variable
 
-    obs.extensionVersion = '0.0.1';
+    // extension version
+    obs.extensionVersion = '0.0.2';
+
+    // constants to be used for future streamState and recordState events
+    obs.STATE = Object.freeze({
+        INACTIVE: 0,
+        STARTING: 1,
+        STARTED:  2,
+        STOPPING: 3
+    });
+    obs.STATEBYINDEX = Object.freeze({
+        '0': 'INACTIVE',
+        '1': 'STARTING',
+        '2': 'STARTED',
+        '3': 'STOPPING'
+    });
 
     /** @description Adds an event listener
      ** @access public
@@ -233,7 +250,7 @@
      ** @returns <Object:scene>
      */
     // This overwrites the obsstudio's getCurrentScene function
-    obs.getCurrentScene = function () {
+    obs.currentScene = function () {
         if (ready) {
             return JSON.parse(JSON.stringify(currentScene || '{}'));
         }
@@ -251,6 +268,22 @@
         throw new Error('OBS-Studio BrowerSource Extension not ready');
     };
 
+    /** @description returns the current stream state
+     ** @access public
+     ** @returns obs.STATE.<state>
+     */
+    obs.streamState = function () {
+        return streamState;
+    }
+
+    /** @description returns the current stream state
+     ** @access public
+     ** @returns obs.STATE.<state>
+     */
+    obs.recordState = function () {
+        return recordState;
+    }
+
     /** @description Returns the state of readiness of the obs exension
      ** @access public
      ** @returns Boolean
@@ -266,28 +299,50 @@
         // needlessly
         (function () {
 
+            // remove the getCurrentScene function in light of .currentScene being added
+            delete obs.getCurrentScene;
+
             // Register obs specific event hooks that occur on the window, so they
             // are emitted through the extended obsstudio instance
-            [
-                {name: 'obsStreamingStarting', custom: 'streamStarting'},
-                {name: 'obsStreamingStarted',  custom: 'streamStarted'},
-                {name: 'obsStreamingStopping', custom: 'streamStopping'},
-                {name: 'obsStreamingStopped',  custom: 'streamStopped'},
-                {name: 'obsRecordingStarting', custom: 'recordStarting'},
-                {name: 'obsRecordingStarted',  custom: 'recordStarting'},
-                {name: 'obsRecordingStopping', custom: 'recordStopping'},
-                {name: 'obsRecordingStopped',  custom: 'recordStopped'}
-            ].forEach(function (evtName) {
-
-                // register the event on the window object
-                window.addEventListener(evtName.name, function (evt) {
-                    // stop propagation; scripts should be using window.obsstudio.on()
-                    // to capture obs events
-                    evt.stopPropagation();
-
-                    // Emit the event on the obsstudio instance
-                    obs.emit(evtName.custom, evt.detail);
-                });
+            window.addEventListener('obsStreamingStarting', function (evt) {
+                evt.stopPropagation();
+                streamState = obs.STATE.STARTING;
+                obs.emit('streamState', streamState);
+            });
+            window.addEventListener('obsStreamingStarted', function (evt) {
+                evt.stopPropagation();
+                streamState = obs.STATE.STARTED;
+                obs.emit('streamState', streamState);
+            });
+            window.addEventListener('obsStreamingStopping', function (evt) {
+                evt.stopPropagation();
+                streamState = obs.STATE.STOPPING;
+                obs.emit('streamState', streamState);
+            });
+            window.addEventListener('obsStreamingStopped', function (evt) {
+                evt.stopPropagation();
+                streamState = obs.STATE.INACTIVE;
+                obs.emit('streamState', streamState);
+            });
+            window.addEventListener('obsRecordingStarting', function (evt) {
+                evt.stopPropagation();
+                recordState = obs.STATE.STARTING;
+                obs.emit('recordState', streamState);
+            });
+            window.addEventListener('obsRecordingStarted', function (evt) {
+                evt.stopPropagation();
+                recordState = obs.STATE.STARTED;
+                obs.emit('recordState', streamState);
+            });
+            window.addEventListener('obsRecordingStopping', function (evt) {
+                evt.stopPropagation();
+                recordState = obs.STATE.STOPPING;
+                obs.emit('recordState', streamState);
+            });
+            window.addEventListener('obsRecordingStopped', function (evt) {
+                evt.stopPropagation();
+                recordState = obs.STATE.INACTIVE;
+                obs.emit('recordState', streamState);
             });
 
             // Register onVisibilityChange handler
@@ -373,7 +428,7 @@
                     throw new Error('init event not called');
                 }
 
-                switch (params.event) {
+                switch (params.event.toLowerCase()) {
                     case 'init':
                         // if already initialized
                         if (ready) {
@@ -403,7 +458,7 @@
                         obs.emit('ready');
                         break;
 
-                    case 'sceneChange':
+                    case 'scenechange':
                         // validate scene parameter
                         if (!hasKey(params, 'scene') || typeof params.scene !== 'string' || !params.scene.length) {
                             throw new Error('init event missing scene');
@@ -428,7 +483,7 @@
                         obs.emit('sceneChange', evtDetails);
                         break;
 
-                    case 'visibilityChange':
+                    case 'visibilitychange':
                         if (!hasKey(params, 'state') || typeof params.state !== 'string') {
                             throw new Error('visibilityChange event missing state parameter');
                         }
@@ -449,36 +504,24 @@
                         }
                         break;
 
-                    case 'streamingStarting':
-                        obs.emit('streamStarting');
+                    case 'streamstate':
+                        if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
+                            throw new Error('streamState event has missing or invalid state parameter');
+                        }
+                        if (streamState !== obs.STATEBYINDEX[params.state]) {
+                            streamState = obs.STATEBYINDEX[params.state];
+                            obs.emit('streamState', streamState);
+                        }
                         break;
 
-                    case 'streamingStarted':
-                        obs.emit('streamStarted');
-                        break;
-
-                    case 'streamingStopping':
-                        obs.emit('streamStopping');
-                        break;
-
-                    case 'streamingStopped':
-                        obs.emit('streamStopped');
-                        break;
-
-                    case 'recordingStarting':
-                        obs.emit('recordStarting');
-                        break;
-
-                    case 'recordingStarted':
-                        obs.emit('recordStarted');
-                        break;
-
-                    case 'recordingStopping':
-                        obs.emit('recordStopping');
-                        break;
-
-                    case 'recordingStopped':
-                        obs.emit('recordStopped');
+                    case 'recordstate':
+                        if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
+                            throw new Error('recordState event has missing or invalid state parameter');
+                        }
+                        if (recordState !== obs.STATEBYINDEX[params.state]) {
+                            recordState = obs.STATEBYINDEX[params.state];
+                            obs.emit('recordState', recordState);
+                        }
                         break;
 
                     default:
