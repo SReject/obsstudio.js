@@ -171,8 +171,7 @@
 
             var handlers  = eventHandlers[evt],
                 i         = 0,
-                callbacks = [],
-                stop      = false;
+                callbacks = [];
 
             // loop over all handlers for the event
             while (i < handlers.length) {
@@ -204,38 +203,25 @@
                 // processing loop so thrown errors do not halt this execution
                 // or the execution of other handlers
                 setTimeout(function callNextHandler() {
+                    var handler = callbacks.shift(),
+                        evtData;
 
-
-                    // if the stop variable, declared above, is still false
-                    // process the next handler
-                    if (!stop) {
-
-                        var handler = callbacks.shift(),
-                            evtData = {
-
-                                // command passed to the event handler that
-                                // when called from the callback will stop
-                                // further callback processing for the
-                                //current triggering of the event
-                                stop: function () { stop = true; }
-                            };
-
-                        // If there's data to be passed to the event, clone
-                        // it and add it to the event data
-                        if (data !== undefined) {
-                            evtData.data = JSON.parse(JSON.stringify(data));
-                        }
-
-                        // if there's still more handlers, start a timeout
-                        // to handle them
-                        if (callbacks.length) {
-                            setTimeout(callNextHandler, 0);
-                        }
-
-                        // call the current handler function
-                        handler.call(obs, evtData);
+                    // If there's data to be passed to the event, clone
+                    // it and add it to the event data
+                    if (data !== undefined) {
+                        evtData.data = JSON.parse(JSON.stringify(data));
                     }
+
+                    // if there's still more handlers, start a timeout
+                    // to handle them
+                    if (callbacks.length) {
+                        setTimeout(callNextHandler, 0);
+                    }
+
+                    // call the current handler function
+                    handler.call(obs, evtData);
                 }, 0);
+
             }
         } else {
             delete eventHandlers[evt];
