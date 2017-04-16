@@ -20,7 +20,7 @@
     Object.defineProperty(obs, 'extensionVersion', {
         writable: false,
         enumerable: true,
-        value: '0.0.3'
+        value: '0.0.4'
     });
 
     // Add: STATE contants
@@ -36,7 +36,7 @@
     });
 
     // Add: STATEBYINDEX constants
-    Object.defineProperty(obs, 'STATE', {
+    Object.defineProperty(obs, 'STATEBYINDEX', {
         writable: false,
         enumerable: true,
         value: Object.freeze({
