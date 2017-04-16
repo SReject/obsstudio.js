@@ -1,2 +1,3 @@
-Normalize all streaming state events into a single streamingState event
-Normalize all recording state events into a single recordingState event
+Encapsulate all streaming state events under a single streamingState event
+Encapsulate all recording state events under a single recordingState event
+Track streaming/recording states
