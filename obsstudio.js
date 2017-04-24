@@ -18,7 +18,7 @@
     Object.defineProperty(obs, 'extensionVersion', {
         writable: false,
         enumerable: true,
-        value: '0.0.5'
+        value: '0.0.7'
     });
 
     // Add: STATE contants
@@ -448,141 +448,129 @@
         // wrap in a function so as not to leak variables needlessly
         (function () {
 
-            // function to make handling location.hash easier
-            function getParamsFromHash() {
+            function processHash() {
                 var hash = location.hash.substring(1),
                     regex = /(?:^|&)([^&=]+)(?:=([^&]*))?(?=&|$)/g,
-                    match, name, value, params = {};
+                    match,
+                    name,
+                    value,
+                    params = {},
+                    evt,
+                    evtDetails;
 
-                if (hash) {
-                    while (!!(match = regex.exec(hash))) {
-                        name = decodeURIComponent(match[1]);
-                        value = decodeURIComponent(match[2]);
-                        if (!hasKey(params, name)) {
-                            params[name] = value;
-                        } else if (Array.isArray(params[name])) {
-                            params[name].push(value);
-                        } else {
-                            params.name = [params[name], value];
-                        }
+                if (!hash) {
+                    return;
+                }
+
+                while (!!(match = regex.exec(hash))) {
+                    name = decodeURIComponent(match[1]);
+                    value = decodeURIComponent(match[2]);
+                    if (!hasKey(params, name)) {
+                        params[name] = value;
+                    } else if (Array.isArray(params[name])) {
+                        params[name].push(value);
+                    } else {
+                        params.name = [params[name], value];
                     }
                 }
-                return params;
-            }
 
-            function processHash() {
-                var params = getParamsFromHash(), evt, evtDetails;
-
-                // check to make sure the hash has an event. If not, throw an error
+                // 'event' missing from hash so ignore
                 if (!hasKey(params, 'event') || typeof params.event !== 'string' || !params.event) {
-                    throw new Error('location.hash missing or has invalid event parameter');
+                    return;
                 }
 
-                if (params.event !== 'init' && !ready) {
-                    throw new Error('init event not called');
+                params.event = params.event.toLowerCase();
+
+                if (params.event === 'scenechange' && !ready) {
+                    params.event = 'init';
+
+                } else if (params.event === 'init' && ready) {
+                    params.event = 'scenechange';
+
+                // Init event not recieved yet
+                } else if (params.event !== 'init' && !ready) {
+                    return;
                 }
 
-                switch (params.event.toLowerCase()) {
-                    case 'init':
-                        // if already initialized
-                        if (ready) {
-                            throw new Error('init event already raised');
-                        }
 
-                        // validate scene parameter
-                        if (!hasKey(params, 'scene') || typeof params.scene !== 'string' || !params.scene.length) {
-                            throw new Error('init event missing scene');
-                        }
 
-                        // validate width parameter
-                        if (!hasKey(params, 'width') || typeof params.width !== 'string' || !params.width.length || isNaN(params.width)) {
-                            throw new Error('init event missing scene');
-                        }
+                if (params.event === 'init' || params.event === 'scenechange') {
 
-                        // validate height parameter
-                        if (!hasKey(params, 'height') || typeof params.height !== 'string' || !params.height.length || isNaN(params.height)) {
-                            throw new Error('init event missing scene');
-                        }
+                    // validate scene parameter
+                    if (!hasKey(params, 'scene') || typeof params.scene !== 'string' || !params.scene.length) {
+                        return;
+                    }
 
-                        // update state variables
-                        currentScene = {name: params.scene, width: Number(params.width), height: Number(params.height)};
-                        ready = true;
+                    // validate width
+                    if (!hasKey(params, 'width') || !params.width) {
+                        params.width = document.body.clientWidth;
 
-                        // emit event
-                        obs.emit('ready');
-                        break;
+                    } else if (isNaN(params.width)) {
+                        console.warn('[obsstudio] scene width invalid');
+                        return;
+                    }
 
-                    case 'scenechange':
-                        // validate scene parameter
-                        if (!hasKey(params, 'scene') || typeof params.scene !== 'string' || !params.scene.length) {
-                            throw new Error('init event missing scene');
-                        }
+                    // validate height
+                    if (!hasKey(params, 'height') || !params.height) {
+                        params.width = document.body.clientHeight;
 
-                        // validate width parameter
-                        if (!hasKey(params, 'width') || typeof params.width !== 'string' || !params.width.length || isNaN(params.width)) {
-                            throw new Error('init event missing scene');
-                        }
+                    } else if (isNaN(params.height)) {
+                        return;
+                    }
 
-                        // validate height parameter
-                        if (!hasKey(params, 'height') || typeof params.height !== 'string' || !params.height.length || isNaN(params.height)) {
-                            throw new Error('init event missing scene');
-                        }
-                        // compile event details
+                    // build event details and update state
+                    if (params.event === 'scenechange') {
                         evtDetails = {name: params.scene, width: Number(params.width), height: Number(params.height), previousScene: currentScene};
+                        params.event = 'sceneChange';
+                    } else {
+                        params.event = 'ready';
+                        ready = true;
+                    }
+                    currentScene = {name: params.scene, width: Number(params.width), height: Number(params.height)};
 
-                        // update state
-                        currentScene = {name: params.scene, width: Number(params.width), height: Number(params.height)};
+                    // event the event
+                    obs.emit(params.event, evtDetails);
 
-                        // emit event
-                        obs.emit('sceneChange', evtDetails);
-                        break;
+                } else if (params.event === 'visibilitychange') {
+                    if (!hasKey(params, 'state') || typeof params.state !== 'string') {
+                        return;
+                    }
+                    params.state = params.state.toLowerCase();
 
-                    case 'visibilitychange':
-                        if (!hasKey(params, 'state') || typeof params.state !== 'string') {
-                            throw new Error('visibilityChange event missing state parameter');
-                        }
-                        params.state = params.state.toLowerCase();
+                    // convert boolean and number values
+                    if (params.state === 'true') {
+                        params.state = true;
 
-                        // convert boolean and number values
-                        if (params.state === 'true') {
-                            params.state = true;
-                        } else if (params.state === 'false') {
-                            params.state = false;
-                        } else if (!isNaN(params.state)) {
-                            params.state = Number(params.state);
-                        }
+                    } else if (params.state === 'false') {
+                        params.state = false;
 
-                        if (visible === !(params.state)) {
-                            visible = !!(params.state);
-                            obs.emit(visibilityChange);
-                        }
-                        break;
+                    } else if (!isNaN(params.state)) {
+                        params.state = Number(params.state);
+                    }
 
-                    case 'streamstate':
-                        if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
-                            throw new Error('streamState event has missing or invalid state parameter');
-                        }
-                        if (streamState !== obs.STATEBYINDEX[params.state]) {
-                            streamState = obs.STATEBYINDEX[params.state];
-                            obs.emit('streamState', streamState);
-                        }
-                        break;
-
-                    case 'recordstate':
-                        if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
-                            throw new Error('recordState event has missing or invalid state parameter');
-                        }
-                        if (recordState !== obs.STATEBYINDEX[params.state]) {
-                            recordState = obs.STATEBYINDEX[params.state];
-                            obs.emit('recordState', recordState);
-                        }
-                        break;
-
-                    default:
-                        throw new Error('unknown event');
-
+                    if (visible === !(params.state)) {
+                        visible = !!(params.state);
+                        obs.emit(visibilityChange);
+                    }
+                } else if (params.event === 'streamstate') {
+                    if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
+                        return;
+                    }
+                    if (streamState !== obs.STATEBYINDEX[params.state]) {
+                        streamState = obs.STATEBYINDEX[params.state];
+                        obs.emit('streamState', streamState);
+                    }
+                } else if (recordstate) {
+                    if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
+                        return;
+                    }
+                    if (recordState !== obs.STATEBYINDEX[params.state]) {
+                        recordState = obs.STATEBYINDEX[params.state];
+                        obs.emit('recordState', recordState);
+                    }
                 }
             }
+
             // call processHash then pass the function as the event handler
             window.addEventListener('hashchange', processHash() || processHash);
         }());
