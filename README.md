@@ -29,7 +29,9 @@ Include obsabstraction.js (if desired) and obsstudio.js in your html file prior 
         <!-- include obsabstraction if you want to test in the browser; See abstraction below -->
         <script src="./obsabstraction.js"></script>
 
+        <!-- Include obsstudio.js -->
         <script src="./obsstudio.js"></script>
+
         <!-- Other scripts that make use of the modified obsstudio object -->
     </head>
     <body>
@@ -63,6 +65,18 @@ Returns `true` if the browser source is active
 
 #### `isVisible` as Boolean  
 Is `true` if the scene is visible  
+
+
+#### `sceneName` as String  
+Current scene's name  
+
+
+#### `sceneWidth` as Number  
+Current scene's width  
+
+
+#### `sceneHeight` as Number  
+Current scene's height
 
 
 #### `currentScene` as Object  
@@ -174,14 +188,17 @@ Emitted when the streaming state changes
 #### `recordState`  
 Emitted when the recording state changes  
 
+`event.data` is a `obsstudio.state` enumerate
+
+
 
 # Abstraction  
 `obsabstraction.js` is a non-obsstudio abstraction so `obsstudio.js` can be used within a browser outside of an OBS-Studio BrowserSource.  
-The abstraction makes use of web browers' `location.hash` to retrieve events.  
+The abstraction makes use of web browsers' `location.hash` to retrieve events.  
 
 ## Issuing events
 Events are issued via changes to `location.hash`.  
-Events are formatted as a urlencoded queryString and must always contain an `event` parameter.  
+Events are formatted as a url-encoded query-string and must always contain an `obsevent` parameter.  
 
 ## Events
 
