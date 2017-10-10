@@ -15,20 +15,35 @@
     </head>
     <body>
         <script>(function () {
+            const obsObject = window.obsstudio;
+        
             function sceneUpdater(name) {
                 console.log(`Switching Scenes to: ${name}`);
             }
-            const obsObject = window.obsstudio;
-            obsObject.on('ready', () => {
+
+            function init() {
                 console.log('OBS Studio ready; Starting up overlay');
                 console.log(`Current Scene: ${obsObject.currentScene.name}`);
+                sceneUpdater(obsObject.currentScene.name);
+            }
+            
+            if (obsObject.isReady) {
+                init();
 
+            } else {
+                obsObject.on('ready', () => {
+                    console.log('OBS Studio ready; Starting up overlay');
+                    console.log(`Current Scene: ${obsObject.currentScene.name}`);
+
+                    sceneUpdater(obsObject.currentScene.name);
+                });
+            }
+
+            obsObject.on('sceneChange', (evt) => {
+                console.log('Changing scenes to: ${obsObject.currentScene.name}');
                 sceneUpdater(obsObject.currentScene.name);
             });
-            obsObject.on('sceneChange', (evt) => {
-                console.log('Changing scenes');
-                sceneUpdater(`${obsObject.currentScene.name}`);
-            });
+
         }())</script>
 
     </body>
