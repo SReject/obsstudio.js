@@ -491,8 +491,6 @@
         scene.width  = currentScene.width;
         scene.height = currentScene.height;
         isReady      = true;
-
-        console.log('readied', scene)
         emit('ready');
     });
 
