@@ -1,603 +1,532 @@
-/*@license: The MIT License (MIT)
-
-Copyright (c) 2017-, SReject
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+/* obsstudio.js
+** License: MIT - Copyright (c) 2017 SReject
 */
-(function () {
+(function (isCallable) {
 
-    // Ease-of-use function for determining if an object has the specified
-    // property
-    function hasKey(obj, key) {
-        return Object.prototype.hasOwnProperty.call(obj, key);
+    // Reflections
+    const owns = Object.prototype.hasOwnProperty;
+    const obs  = window.obsstudio;
+
+    // State variables
+    const eventHandlers = {};
+    const getCurrentScene = obs.getCurrentScene;
+    let isReady = false;
+    let isActive = null;
+    let isVisible = -1;
+    let streamingState = -1;
+    let recordingState = -1;
+    let scene = {
+        width: -1,
+        height: -1,
+        name: null
+    };
+
+    // Custom obs-raised event class
+    function OBSEvent(type, data) {
+        Object.defineProperties(this, {
+            cancelable: {
+                enumerable: true,
+                value: true
+            },
+            canceled: {
+                writable: true,
+                value: false
+            },
+            data: {
+                enumerable: true,
+                value: data
+            },
+            eventPhase: {
+                enumerable: true,
+                value: 2
+            },
+            isTrusted: {
+                enumerable: true,
+                value: false
+            },
+            type: {
+                enumerable: true,
+                value: type
+            }
+        });
+    }
+    Object.defineProperty(OBSEvent.prototype, "stopPropagation", {
+        value: function stopPropagation() {
+            var desc = Object.getOwnPropertyDescriptor(this, 'canceled') || {};
+            if (desc.writable == true) {
+                Object.defineProperty(this, 'canceled', {
+                    writable: false,
+                    value: true
+                });
+            }
+        }
+    });
+    Object.defineProperty(OBSEvent.prototype, "stopImmediatePropagation", {
+        value: function stopImmediatePropagation() {
+            this.stopPropagation();
+        }
+    });
+    function emit(type, data) {
+        if (owns.call(eventHandlers, type)) {
+            let event = new OBSEvent(type);
+            event.data = data;
+            let handlers = eventHandlers[type];
+            let idx = 0;
+
+            while (idx < handlers.length) {
+                let handler = handlers[idx];
+                handler.callback(event);
+                if (event.canceled)
+                    break;
+
+                if (handler.once)
+                    handlers.splice(idx, 1);
+
+                else
+                    idx += 1;
+            }
+        }
+    }
+    function handleObsEvent(evt) {
+        let name = "";
+        let data = null;
+        switch (evt.type) {
+            case 'obsExit':
+                name = 'exit';
+                data = undefined;
+                break;
+            case 'obsStreamingStarting':
+                name = 'streamingState';
+                data = streamingState = obs.state.STARTING;
+                break;
+            case 'obsStreamingStarted':
+                name = 'streamingState';
+                data = streamingState = obs.state.STARTED;
+                break;
+            case 'obsStreamingStopping':
+                name = 'streamingState';
+                data = streamingState = obs.state.STOPPING;
+                break;
+            case 'obsStreamingStopping':
+                name = 'streamingState';
+                data = streamingState = obs.state.INACTIVE;
+                break;
+            case 'obsRecordingStarting':
+                name = 'recordingState';
+                data = recordingState = obs.state.STARTING;
+                break;
+            case 'obsRecordingStarted':
+                name = 'recordingState';
+                data = recordingState = obs.state.STARTED;
+                break;
+            case 'obsRecordingStopping':
+                name = 'recordingState';
+                data = recordingState = obs.state.STOPPING;
+                break;
+            case 'obsRecordingStopping':
+                name = 'recordingState';
+                data = recordingState = obs.state.INACTIVE;
+                break;
+            case 'obsSceneChanged':
+                let currentScene = {};
+                let previousScene = Object.freeze({
+                    name: scene.name,
+                    width: scene.width,
+                    height: scene.height
+                });
+                scene.name   = evt.detail.name;
+                scene.width  = evt.detail.width;
+                scene.height = evt.detail.height;
+                if (isReady) {
+                    name = 'sceneChange';
+                    data = previousScene;
+                    break;
+                }
+                isReady = true;
+                name = 'ready';
+        }
+        emit(name, data);
+
+        if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
+        if (evt.stopPropagation) evt.stopPropagation();
     }
 
-    var obs                   = window.obsstudio || {},
-        eventHandlers         = {},
-        currentScene          = {}, // scene tracking variable
-        visible               = null, // visibility tracking variable
-        streamState           = null, // stream-state tracking variable
-        recordState           = null, // record-state tracking variable
-        ready                 = false; // ready-state tracking variable
+    // capture obs-specific events emitted on the window instance and redirect
+    // them to the obsstudio object instance
+    window.addEventListener('obsStreamingStarting', handleObsEvent);
+    window.addEventListener('obsStreamingStarted',  handleObsEvent);
+    window.addEventListener('obsStreamingStopping', handleObsEvent);
+    window.addEventListener('obsStreamingStopped',  handleObsEvent);
+    window.addEventListener('obsRecordingStarting', handleObsEvent);
+    window.addEventListener('obsRecordingStarted',  handleObsEvent);
+    window.addEventListener('obsRecordingStopping', handleObsEvent);
+    window.addEventListener('obsRecordingStopped',  handleObsEvent);
+    window.addEventListener('obsSceneChanged',      handleObsEvent);
+    window.addEventListener('obsExit',              handleObsEvent);
 
-    // Add: extension version
-    Object.defineProperty(obs, 'extensionVersion', {
-        writable: false,
-        enumerable: true,
-        value: '0.0.7'
-    });
 
-    // Add: STATE contants
-    Object.defineProperty(obs, 'STATE', {
-        writable: false,
-        enumerable: true,
-        value: Object.freeze({
-            INACTIVE: 0,
-            STARTING: 1,
-            STARTED:  2,
-            STOPPING: 3
-        })
-    });
-
-    // Add: STATEBYINDEX constants
-    Object.defineProperty(obs, 'STATEBYINDEX', {
-        writable: false,
-        enumerable: true,
-        value: Object.freeze({
-            '0': 'INACTIVE',
-            '1': 'STARTING',
-            '2': 'STARTED',
-            '3': 'STOPPING'
-        })
-    });
-
-    /** @description Adds an event listener
+    /** @desc Make obsstudio.pluginVersion readonly
+     ** @readonly
+     ** @static
      ** @access public
-     ** @param evt as String   : Required : Event name to listen for
-     ** @param fnc as Function : Required : Function to call when the event is emitted
-     ** @param once as Boolean : Optional : If true, the handler will be removed after the event is next triggered
-     ** @returns <Object:obs>
+     ** @var {String} obsstudio.pluginVersion
+     */
+    Object.defineProperty(obs, 'pluginVersion', {
+        configurable: false,
+        writable: false,
+        enumerable: true,
+        value : obs.pluginVersion
+    });
+
+    /** @desc Current version of obsstudio.js
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {String} obsstudio.obsstudiojsVersion
+     */
+    Object.defineProperty(obs, 'obsstudiojsVersion', {
+        enumerable: true,
+        value : '0.0.8'
+    });
+
+    /** @desc Current version of obsstudio.js
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @deprecated as of 0.0.8
+     ** @var {String} obsstudio.extensionsVersion
+     */
+     Object.defineProperty(obs, 'extensionsVersion', { enumerable: true, get: () => obs.obsstudiojsVersion });
+
+     /** @desc true|false dependant on if obsstudio.js is ready
+      ** @readonly
+      ** @static
+      ** @access public
+      ** @var {Boolean} obsstudio.isReady
+      */
+     Object.defineProperty(obs, 'isReady', { enumerable: true, get: () => isReady });
+
+    /** @desc true|false if the BrowserSource is active; null if the state is unknown
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Boolean|Null} obsstudio.isActive
+     */
+    Object.defineProperty(obs, 'isActive', { enumerable: true, get: () => isActive });
+
+    /** @desc true|false if the BrowserSource is visible; null if the state is unknown
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Boolean|Null} obsstudio.isVisible
+     */
+    Object.defineProperty(obs, 'isVisible', { enumerable: true, get: () => isVisible });
+
+    /** @desc Current state of streaming
+     ** @readonly
+     ** @static
+     ** @var {obsstudio.state} obsstudio.streamingState
+     ** @access public
+     */
+    Object.defineProperty(obs, 'streamingState', { enumerable: true, get: () => streamingState });
+
+    /** @desc Current state of recording
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {obsstudio.state} obsstudio.streamingState
+     */
+    Object.defineProperty(obs, 'recordingState', { enumerable: true, get: () => recordingState });
+
+    /** @desc Current scene name
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {String} obstudio.sceneName
+     */
+    Object.defineProperty(obs, 'sceneName', { enumerable: true, get: () => scene.name });
+
+    /** @desc Current scene width
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Number} obstudio.sceneWidth
+     */
+    Object.defineProperty(obs, 'sceneWidth', { enumerable: true, get: () => scene.width });
+
+    /** @desc Current scene height
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Number} obstudio.sceneHeight
+     */
+    Object.defineProperty(obs, 'sceneHeight', { enumerable: true, get: () => scene.height });
+
+    /** @desc Current scene information
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Object} obstudio.currentScene
+     */
+    Object.defineProperty(obs, 'currentScene', {
+        enumerable: true,
+        get: () => { return {name: scene.name, width: scene.width, height: scene.height} }
+    });
+
+    /** @desc Override the obsstudio object's getCurrentScene function and make the replacement readonly
+     ** @desc This is done to be more homogeneous with modern practices
+     ** @readonly
+     ** @static
+     ** @override
+     ** @access public
+     ** @var {Function} obstudio.state
+     ** @param {Undefined|Function} callbackFN - The callback function to call with the current scene
+     */
+    Object.defineProperty(obs, 'getCurrentScene', {
+        value: callbackFn => {
+            if (!callbackFn)
+                return obs.currentScene;
+
+            if (isCallable(callbackFn))
+                callbackFn(obs.currentScene);
+
+            else
+                throw new TypeError('callbackFn is not a function');
+        }
+    });
+
+    /** @desc Recording|Streaming state enum
+     ** @readonly
+     ** @static
+     ** @enum
+     ** @access public
+     ** @var {Object.Number} obstudio.state
+     */
+    Object.defineProperty(obs, 'state', {
+        value: Object.freeze({
+            "UNKNOWN": -1,
+            "INACTIVE": 0,
+            "STARTING": 1,
+            "STARTED":  2,
+            "STOPPING": 3
+        })
+    });
+
+    /** @desc Recording|Streaming state enum
+     ** @readonly
+     ** @static
+     ** @enum
+     ** @deprecated as of 0.0.8; use obsstudio.state
+     ** @access public
+     ** @var {Object.Number} obstudio.state
+     */
+    Object.defineProperty(obs, 'STATE', { get: () => obsstudio.state });
+
+    /** @desc Provide own onActiveChange callback
+     ** @desc Overrides the obsstudio object's default behavior; this is done to be more homogeneous with modern practices
+     ** @readonly
+     ** @static
+     ** @override
+     ** @access public
+     ** @fires activeChange
+     ** @var {Function} obsstudio.onActiveChange
+     ** @param {Function} handler - Adds the handler as an activeChange event handler
+     */
+    Object.defineProperty(obs, 'onActiveChange', {
+        enumerable: false,
+        get: (active) => {
+            isActive = active;
+            emit('activeChange', active);
+        },
+        set: (handler) => obs.on('activeChange', handler)
+    });
+
+    /** @desc Provide own onVisibilityChange callback
+     ** @desc Overrides the obsstudio object's default behavior; this is done to be more homogeneous with modern practices
+     ** @readonly
+     ** @static
+     ** @override
+     ** @access public
+     ** @fires visibilityChange
+     ** @var {Function} obstudio.onVisibilityChange
+     ** @param {Function} handler - Adds the handler as an visibility event handler
+     */
+    Object.defineProperty(obs, 'onVisibilityChange', {
+        enumerable: false,
+        get: (visible) => {
+            isVisible = visible;
+            emit('visibilityChange', visible);
+        },
+        set: (handler) => obs.addEventListener('visibilityChange', handler)
+    });
+
+    /** @desc Provide own onSceneChange callback
+     ** @desc Overrides the obsstudio object's default behavior; this is done to be more homogeneous with modern practices
+     ** @readonly
+     ** @static
+     ** @override
+     ** @access public
+     ** @fires visibilityChange
+     ** @var {Function} obstudio.onSceneChanged
+     ** @param {Function} handler - Adds the handler as a sceneChange event handler
+     */
+    Object.defineProperty(obs, 'onSceneChange', {
+        enumerable: false,
+        set: (handler) => obs.addEventListener('sceneChange', handler)
+    });
+
+    /** @desc Registers an event handler
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Function} obstudio.addEventListener
+     ** @param {String} name - the event name of which to listen
+     ** @param {Function} handler - The function to call when the event is emitted
+     ** @param {Boolean|Object} options - if true or options.once is true, the handler will be added as a one-type event listener
+     */
+    Object.defineProperty(obs, 'addEventListener', {
+        value: (type, listener, options) => {
+            if (typeof type !== "string")
+                throw new TypeError("event type not a string");
+
+            if (typeof listener !== "function" || !isCallable(listener))
+                throw new TypeError("listener not a function");
+
+            if (!owns.call(eventHandlers, type))
+                eventHandlers[type] = [];
+
+            eventHandlers[type].push({
+                callback: listener,
+                once: typeof options === 'boolean' ? options : options ? options.once : undefined
+            });
+        }
+    });
+
+    /** @desc Reflection of obsstudio.addEventListener
+     ** @readonly
+     ** @static
+     ** @access public
+     ** @var {Function} obstudio.on
+     ** @param {String} name - the event name of which to listen
+     ** @param {Function} handler - The function to call when the event is emitted
+     ** @param {Boolean|Object} options - if true or options.once is true, the handler will be added as a one-type event listener
      */
     Object.defineProperty(obs, 'on', {
-        writable: false,
-        enumerable: true,
-        value: function (evt, fnc, once) {
-
-            // validate arguments
-            if (typeof evt !== 'string' || !evt) {
-                throw new Error('Invalid event name');
-            }
-            if (typeof fnc !== 'function' || !fnc) {
-                throw new Error('Invalid event handling function');
-            }
-            if (once !== undefined && typeof once !== 'boolean') {
-                throw new Error('Invalid once parameter');
-            }
-
-            // if the specified event is 'ready'
-            if (evt === 'ready') {
-
-                // if the ready event has already fired, call the handler function
-                if (ready) {
-                    setTimeout(fnc, 0);
-                    return obs;
-                }
-
-                // otherwise set the once property to true, so the handler is removed
-                // once the ready event has fired
-                once = true;
-            }
-
-            // if there's not a list of handlers for the specified event
-            // create one
-            if (!hasKey(eventHandlers, evt)) {
-                eventHandlers[evt] = [];
-            }
-
-            // add the handler to the event's list
-            eventHandlers[evt].push({
-                callback: fnc,
-                once: once
-            });
-
-            // return the obs instance for call-chaining
-            return obs;
-        }
+        value: function () { return obs.addEventListener.apply(null, arguments) }
     });
 
-    /** @description Removes the first matching event handler
+    /** @desc Registers a one-time event handler
+     ** @readonly
+     ** @static
      ** @access public
-     ** @param evt as String   : Required : Event name to remove the handler from
-     ** @param fnc as Function : Required : The exact function used to as the handler's callback
-     ** @param once as Boolean : Optional : Must match the value given when the handler was created
-     ** @returns <Object:obs>
-     */
-    Object.defineProperty(obs, 'off', {
-        writable: false,
-        enumerable: true,
-        value: function (evt, fnc, once) {
-
-            // validate arguments
-            if (typeof evt !== 'string' || !evt) {
-                throw new Error('Invalid event name');
-            }
-            if (typeof fnc !== 'function' || !fnc) {
-                throw new Error('Invalid event handling function');
-            }
-            if (once !== undefined && typeof once !== 'boolean') {
-                throw new Error('Invalid once parameter');
-            }
-
-            // Check to make sure the specified event has atleast one event handler
-            if (hasKey(eventHandlers, evt) && Array.isArray(eventHandlers[evt]) && eventHandlers[evt].length) {
-                var i = 0, handlers = eventHandlers[evt];
-
-                // loop over the list of handlers for the specified event. If
-                // the handler in the list matches the one specified via
-                // arguments, remove it from the list then exit looping
-                while (i < handlers.length) {
-                    if (handlers[i].callback === fnc && handlers[i].once === once) {
-                        handlers.splice(i, 1);
-                        break;
-                    }
-                    i += 1;
-                }
-
-                // if the event's handler list is empty, delete the list
-                if (handlers.length === 0) {
-                    delete eventHandlers[evt];
-                }
-
-            // if the event doesn't have any handlers, the handler list isn't an
-            // array, or the array is empty delete the event list
-            } else {
-                delete eventHandlers[evt];
-            }
-
-            // return the obs instance for call chaining
-            return obs;
-        }
-    });
-
-    /** @description alias for obs.on(..., ..., true)
-     ** @access public
-     ** @param evt as String   : Required : Event name to listen for
-     ** @param fnc as Function : Required : Function to call when the event is emitted
-     ** @returns <Object:obs>
+     ** @var {Function} obstudio.once
+     ** @param {String} name - the event name of which to listen
+     ** @param {Function} handler - The function to call when the event is emitted
      */
     Object.defineProperty(obs, 'once', {
-        writable: false,
-        enumerable: true,
-        value: function (evt, fnc) {
-            return obs.on(evt, fnc, true);
-        }
+        value: (type, listener) => obs.addEventListener(type, listener, true)
     });
 
-    /** @description Alias for obs.off(..., ..., true)
+    /** @desc Removes a registered event handler. All parameters must match those used to register the event handler
+     ** @readonly
+     ** @static
      ** @access public
-     ** @param evt as String   : Required : Event name to remove the handler from
-     ** @param fnc as Function : Required : The exact function used to as the handler's callback
-     ** @returns <Object:obs>
+     ** @var {Function} obstudio.removeEventListener
+     ** @param {String} name
+     ** @param {Function} handler
+     ** @param {Boolean|Object} options
      */
-    Object.defineProperty(obs, 'onceOff', {
-        writable: false,
-        enumerable: true,
-        value: function (evt, fnc) {
-            return obs.off(evt, fnc, true);
+    Object.defineProperty(obs, 'removeEventListener', {
+        value: function removeEventListener(type, listener, options) {
+            if (typeof type !== "string" || !(type instanceof String))
+                throw new TypeError("event type not a string");
+
+            if (typeof listener !== "function" || !isCallable(listener))
+                throw new TypeError("listener not a function");
+
+            if (owns.call(eventHandlers, type)) {
+                let once = typeof options === 'boolean' ? options : options ? options.once : undefined;
+                let idx = eventHandlers[type].find(handler => (handler.callback === listener && handler.once === once));
+                if (idx)
+                    eventHandlers[type].splice(idx, 1);
+            }
         }
     });
 
-    /** @description Calls event emitters for the specified event
+    /** @desc Reflection of obsstudio.removeEventListener
+     ** @readonly
+     ** @static
      ** @access public
-     ** @param evt as String : Required : Event name to call event handlers for
-     ** @param data          : Optional : data to be passed to the event handler
-     ** @returns <Object:obs>
+     ** @var {Function} obstudio.off
+     ** @param {String} name
+     ** @param {Function} handler
+     ** @param {Boolean|Object} options
      */
-    Object.defineProperty(obs, 'emit', {
-        writable: false,
-        enumerable: true,
-        value: function (evt, data) {
-            // validate arguments; since the data argument can be anything
-            // theres no reason to validate it
-            if (typeof evt !== 'string' || !evt) {
-                throw new Error('Invalid event name');
-            }
-
-            // Make sure the event has handlers
-            if (hasKey(eventHandlers, evt) && Array.isArray(eventHandlers[evt]) && eventHandlers[evt].length) {
-
-                var handlers  = eventHandlers[evt],
-                    i         = 0,
-                    callbacks = [];
-
-                // loop over all handlers for the event
-                while (i < handlers.length) {
-
-                    // add the handler to callbacks to be called
-                    callbacks.push(handlers[i].callback);
-
-                    // if the handler is only to be called once, remove it from
-                    // the event's handler list
-                    if (handlers[i].once) {
-                        handlers.splice(i, 1);
-
-                    // otherwise increase the index to move to the next item
-                    } else {
-                        i += 1;
-                    }
-                }
-
-                // if all handlers were removed from the event's handler list
-                // delete the handler list
-                if (!handlers.length) {
-                    delete eventHandlers[evt];
-                }
-
-                // check to make sure there are handler functions to call
-                if (callbacks.length) {
-
-                    // start a timeout so each event executes outside the main
-                    // processing loop so thrown errors do not halt this execution
-                    // or the execution of other handlers
-                    setTimeout(function callNextHandler() {
-                        var handler = callbacks.shift();
-
-                        // if there's still more handlers, start a timeout
-                        // to handle them
-                        if (callbacks.length) {
-                            setTimeout(callNextHandler, 0);
-                        }
-
-                        // call the current handler function
-                        // clone the data via JSON so the handler function's
-                        // interactions with the data won't alter it for subsequent
-                        // handlers
-                        handler.call(obs, data !== undefined ? JSON.parse(JSON.stringify(data)) : undefined);
-                    }, 0);
-
-                }
-            } else {
-                delete eventHandlers[evt];
-            }
-
-            // return obs instance
-            return obs;
-        }
+    Object.defineProperty(obs, 'off', {
+        value: function () { return obs.removeEventListener.apply(null, arguments) }
     });
 
-    /** @description Retrieves the current scene
+    /** @desc Removes a registered one-time event handler. All parameters must match those used to register the event handler
+     ** @readonly
+     ** @static
      ** @access public
-     ** @returns <Object:scene>
+     ** @var {Function} obstudio.offonce
+     ** @param {String} name
+     ** @param {Function} handler
      */
-    // This overwrites the obsstudio's getCurrentScene function
-    Object.defineProperty(obs, 'currentScene', {
-        writable: false,
-        enumerable: true,
-        value: function () {
-            if (ready) {
-                return JSON.parse(JSON.stringify(currentScene || '{}'));
-            }
-            throw new Error('OBS-Studio BrowerSource Extension not ready');
-        }
+    Object.defineProperty(obs, 'offonce', {
+        value: (type, listener) => obs.removeEventListener(type, listener, true)
     });
 
-    /** @description Returns the state of visibility for the BrowserSource
-     ** @access public
-     ** @returns Boolean
-     */
-    Object.defineProperty(obs, 'isVisible', {
-        writable: false,
-        enumerable: true,
-        value: function () {
-            if (ready) {
-                return visible;
-            }
-            throw new Error('OBS-Studio BrowerSource Extension not ready');
+
+
+    Object.freeze(obs);
+    getCurrentScene(function (currentScene) {
+        // Bug Fix: https://github.com/kc5nra/obs-browser/issues/72 #1
+        if (typeof currentScene === 'string') {
+            currentScene = JSON.parse(currentScene);
         }
+        scene.name   = currentScene.name;
+        scene.width  = currentScene.width;
+        scene.height = currentScene.height;
+        isReady      = true;
+        emit('ready');
     });
 
-    /** @description returns the current stream state
-     ** @access public
-     ** @returns obs.STATE.<state>
-     */
-    Object.defineProperty(obs, 'streamState', {
-        writable: false,
-        enumerable: true,
-        value: function () {
-            if (ready) {
-                return streamState;
+}(function () {
+    /* is-callable
+       https://raw.githubusercontent.com/ljharb/is-callable/a7ca20d7d1be6afd00f136603c4aaa0dfbc6db2d/index.js
+       License: MIT - Copyright (c) 2015 Jordan Harband - Edits by SReject
+           https://raw.githubusercontent.com/ljharb/is-callable/0dc214493bf4aee63fc0b825a9823e0702d6d610/LICENSE
+    */
+    'use strict';
+    var toStr = Object.prototype.toString,
+        fnToStr = Function.prototype.toString,
+        fnClass = '[object Function]',
+        genClass = '[object GeneratorFunction]',
+        constructorRegex = /^\s*class /,
+        isES6ClassFn = function (value) {
+            try {
+                var fnStr = fnToStr.call(value);
+                return constructorRegex.test(fnStr.replace(/\/\/.*\n/g, '').replace(/\/\*[.\s\S]*\*\//g, '').replace(/\n/mg, ' ').replace(/ {2}/g, ' '));
+            } catch (e) {
+                return false;
             }
-            throw new Error('OBS-Studio BrowerSource Extension not ready');
-        }
-    });
-
-    /** @description returns the current record state
-     ** @access public
-     ** @returns obs.STATE.<state>
-     */
-    Object.defineProperty(obs, 'recordState', {
-        writable: false,
-        enumerable: true,
-        value: function () {
-            if (ready) {
-                return recordState;
+        },
+        tryFunctionObject = function (value) {
+            try {
+                fnToStr.call(value);
+                return true;
+            } catch (e) {
+                return false;
             }
-            throw new Error('OBS-Studio BrowerSource Extension not ready');
-        }
-    });
+        },
+        hasToStringTag = typeof Symbol === 'function' && typeof Symbol.toStringTag === 'symbol';
 
-    /** @description Returns the state of readiness of the obs exension
-     ** @access public
-     ** @returns Boolean
-     */
-    Object.defineProperty(obs, 'isReady', {
-        writable: false,
-        enumerable: true,
-        value: function () {
-            return ready;
-        }
-    });
-
-    // if running through OBS BrowserSource
-    if (window.obsstudio) {
-
-        // Make .pluginVersion property read only
-        Object.defineProperty(obs, 'pluginVersion', {
-            writable: false,
-            enumerable: true,
-            value: obs.pluginVersion
-        });
-
-        // Make .getCurrentScene function read only
-        Object.defineProperty(obs, 'getCurrentScene', {
-            writable: false,
-            enumerable: true,
-            value: obs.getCurrentScene
-        });
-
-        // if a visbility change handler has already been defined register
-        // it as an event listener.
-        if (typeof obs.onVisibilityChange === 'function') {
-            obs.on('visbilityChange', obs.onVisibilityChange);
-        }
-
-        // Register the custom onVisibilityChange callback
-        Object.defineProperty(obs, 'onVisibilityChange', {
-            enumerable: true,
-
-            // If another script attempts to define an onVisibilityChange
-            // callback, register it as an event listener instead.
-            // The drawback of doing it like this is callback cannot be
-            // unregistered; if this results in issues its open to be changed.
-            set: function (callback) {
-                if (typeof callback === 'function') {
-                    obs.on('visibilityChange', callback);
-                }
-            },
-            get: function () {
-                return function (state) {
-                    visible = state;
-                    obs.emit('visibilityChange', visible);
-                };
-            }
-        });
-
-        // Register obs specific event hooks that occur on the window, so they
-        // are emitted through the altered obsstudio instance
-        window.addEventListener('obsStreamingStarting', function (evt) {
-            streamState = obs.STATE.STARTING;
-            obs.emit('streamState', streamState);
-        });
-        window.addEventListener('obsStreamingStarted', function (evt) {
-            streamState = obs.STATE.STARTED;
-            obs.emit('streamState', streamState);
-        });
-        window.addEventListener('obsStreamingStopping', function (evt) {
-            streamState = obs.STATE.STOPPING;
-            obs.emit('streamState', streamState);
-        });
-        window.addEventListener('obsStreamingStopped', function (evt) {
-            streamState = obs.STATE.INACTIVE;
-            obs.emit('streamState', streamState);
-        });
-        window.addEventListener('obsRecordingStarting', function (evt) {
-            recordState = obs.STATE.STARTING;
-            obs.emit('recordState', streamState);
-        });
-        window.addEventListener('obsRecordingStarted', function (evt) {
-            recordState = obs.STATE.STARTED;
-            obs.emit('recordState', streamState);
-        });
-        window.addEventListener('obsRecordingStopping', function (evt) {
-            recordState = obs.STATE.STOPPING;
-            obs.emit('recordState', streamState);
-        });
-        window.addEventListener('obsRecordingStopped', function (evt) {
-            recordState = obs.STATE.INACTIVE;
-            obs.emit('recordState', streamState);
-        });
-        window.addEventListener('obsSceneChanged', function (evt) {
-            // store the previous scene in the event details
-            evt.detail.previousScene = currentScene;
-
-            // update the current scene
-            currentScene = evt.detail;
-
-            // if obs has already triggered the ready event
-            // emit the sceneChange event
-            if (ready) {
-                obs.emit('sceneChange', evt.detail);
-
-            // otherwise emit the ready event
-            } else {
-                obs.emit('ready');
-            }
-        });
-
-        obs.getCurrentScene(function (scene) {
-
-            // Bug Fix: https://github.com/kc5nra/obs-browser/issues/72 - #1
-            scene = JSON.parse(scene);
-
-            // if the ready event has not yet been emitted: emit it
-            if (!ready) {
-                ready = true;
-                currentScene = scene;
-                obs.emit('ready');
-            }
-        });
-
-
-    // if running in a normal browser; polyfill various functionality
-    } else {
-
-        // wrap in a function so as not to leak variables needlessly
-        (function () {
-
-            function processHash() {
-                var hash = location.hash.substring(1),
-                    regex = /(?:^|&)([^&=]+)(?:=([^&]*))?(?=&|$)/g,
-                    match,
-                    name,
-                    value,
-                    params = {},
-                    evt,
-                    evtDetails;
-
-                if (!hash) {
-                    return;
-                }
-
-                while (!!(match = regex.exec(hash))) {
-                    name = decodeURIComponent(match[1]);
-                    value = decodeURIComponent(match[2]);
-                    if (!hasKey(params, name)) {
-                        params[name] = value;
-                    } else if (Array.isArray(params[name])) {
-                        params[name].push(value);
-                    } else {
-                        params.name = [params[name], value];
-                    }
-                }
-
-                // 'event' missing from hash so ignore
-                if (!hasKey(params, 'event') || typeof params.event !== 'string' || !params.event) {
-                    return;
-                }
-
-                params.event = params.event.toLowerCase();
-
-                if (params.event === 'scenechange' && !ready) {
-                    params.event = 'init';
-
-                } else if (params.event === 'init' && ready) {
-                    params.event = 'scenechange';
-
-                // Init event not recieved yet
-                } else if (params.event !== 'init' && !ready) {
-                    return;
-                }
-
-
-
-                if (params.event === 'init' || params.event === 'scenechange') {
-
-                    // validate scene parameter
-                    if (!hasKey(params, 'scene') || typeof params.scene !== 'string' || !params.scene.length) {
-                        return;
-                    }
-
-                    // validate width
-                    if (!hasKey(params, 'width') || !params.width) {
-                        params.width = document.body.clientWidth;
-
-                    } else if (isNaN(params.width)) {
-                        console.warn('[obsstudio] scene width invalid');
-                        return;
-                    }
-
-                    // validate height
-                    if (!hasKey(params, 'height') || !params.height) {
-                        params.width = document.body.clientHeight;
-
-                    } else if (isNaN(params.height)) {
-                        return;
-                    }
-
-                    // build event details and update state
-                    if (params.event === 'scenechange') {
-                        evtDetails = {name: params.scene, width: Number(params.width), height: Number(params.height), previousScene: currentScene};
-                        params.event = 'sceneChange';
-                    } else {
-                        params.event = 'ready';
-                        ready = true;
-                    }
-                    currentScene = {name: params.scene, width: Number(params.width), height: Number(params.height)};
-
-                    // event the event
-                    obs.emit(params.event, evtDetails);
-
-                } else if (params.event === 'visibilitychange') {
-                    if (!hasKey(params, 'state') || typeof params.state !== 'string') {
-                        return;
-                    }
-                    params.state = params.state.toLowerCase();
-
-                    // convert boolean and number values
-                    if (params.state === 'true') {
-                        params.state = true;
-
-                    } else if (params.state === 'false') {
-                        params.state = false;
-
-                    } else if (!isNaN(params.state)) {
-                        params.state = Number(params.state);
-                    }
-
-                    if (visible === !(params.state)) {
-                        visible = !!(params.state);
-                        obs.emit(visibilityChange);
-                    }
-                } else if (params.event === 'streamstate') {
-                    if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
-                        return;
-                    }
-                    if (streamState !== obs.STATEBYINDEX[params.state]) {
-                        streamState = obs.STATEBYINDEX[params.state];
-                        obs.emit('streamState', streamState);
-                    }
-                } else if (recordstate) {
-                    if (!hasKey(params, 'state') || typeof params.state !== 'string' || !hasKey(obs.STATEBYINDEX, params.state)) {
-                        return;
-                    }
-                    if (recordState !== obs.STATEBYINDEX[params.state]) {
-                        recordState = obs.STATEBYINDEX[params.state];
-                        obs.emit('recordState', recordState);
-                    }
-                }
-            }
-
-            // call processHash then pass the function as the event handler
-            window.addEventListener('hashchange', processHash() || processHash);
-        }());
-    }
-
-    // Replace the obsstudio object with the altered one
-    window.obsstudio = obs;
-}());
+    return function isCallable(value) {
+        if (!value || typeof value !== 'function' && typeof value !== 'object' || isES6ClassFn(value)) { return false; }
+        if (hasToStringTag) { return tryFunctionObject(value); }
+        var strClass = toStr.call(value);
+        return strClass === fnClass || strClass === genClass;
+    };
+}()));
