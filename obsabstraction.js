@@ -13,20 +13,13 @@
         height: 720
     };
 
-    /**
-     * @desc Processes the url hashtag
-     * @access private
-     * @readonly
-     */
-    const processHash = () => {
+    function parseHash() {
         let hash = location.hash.substring(1),
             regex = /(?:^|&)([^&=]+)(?:=([^&]*))?(?=&|$)/g,
             match,
             name,
             value,
-            params = {},
-            evt,
-            evtDetails;
+            params = {};
 
         // no hash check
         if (!hash) {
@@ -50,6 +43,23 @@
         // Insure the obsevent parameter is valid
         if (!owns.call(params, 'obsevent') || typeof params.obsevent !== 'string' || params.obsevent == "") {
             console.warn("[obsabstraction - hash] Ignoring hash: missing obsevent parameter");
+            return;
+        }
+
+        return params;
+    }
+
+    /**
+     * @desc Processes the url hashtag
+     * @access private
+     * @readonly
+     */
+    const processHash = () => {
+        let params = parseHash(),
+            evt,
+            evtDetails;
+
+        if (params === undefined) {
             return;
         }
 
@@ -141,18 +151,47 @@
 
     // create an obsstudio object in the window
     window.obsstudio = obs = {
+        abstracted: true,
         pluginVersion: '1.30.0',
         obsstudioabstraction: true,
-        getCurrentScene: () => {
-            return {
-                name: scene.name,
-                width: scene.width,
-                height: scene.height
+        getCurrentScene: (fnc) => {
+            if (isCallable(fnc)) {
+                fnc({
+                    name: scene.name,
+                    width: scene.width,
+                    height: scene.height
+                });
             }
         }
     };
     window.addEventListener('hashchange', processHash);
-    setTimeout(processHash, 0);
+
+    (function() {
+        let params = parseHash();
+        if (params === undefined) {
+            return;
+        }
+        if (params.obsevent.toLowerCase() == 'obsscenechanged' || params.obsevent.toLowerCase() === 'onscenechanged') {
+            // validata parameters
+            if (
+                !owns.call(params, 'name')   || params.name === "" ||
+                !owns.call(params, 'width')  || !/^\d+$/.test(params.width) ||
+                !owns.call(params, 'height') || !/^\d+$/.test(params.height)
+            ) {
+                console.warn("[obsabstraction - obsSceneChanged] Missing or invalid parameters");
+                console.warn("[obsabstraction - obsSceneChanged] Format: &obsevent=obsSceneChanged&name=[scenename]&width=[width]&height=height");
+
+            } else {
+
+                // retrieve scene info and store
+                scene.name = params.name;
+                scene.width = parseInt(params.width, 10);
+                scene.height = parseInt(params.height, 10);
+            }
+        } else {
+            setTimeout(processHash, 0);
+        }
+    }());
 }(
     // original obsstudio instance
     window.obsstudio,

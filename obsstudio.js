@@ -2,6 +2,7 @@
 ** License: MIT - Copyright (c) 2017 SReject
 */
 (function (isCallable) {
+    'use strict';
 
     // Reflections
     const owns = Object.prototype.hasOwnProperty;
@@ -68,8 +69,7 @@
     });
     function emit(type, data) {
         if (owns.call(eventHandlers, type)) {
-            let event = new OBSEvent(type);
-            event.data = data;
+            let event = new OBSEvent(type, data);
             let handlers = eventHandlers[type];
             let idx = 0;
 
@@ -481,7 +481,8 @@
 
 
     Object.freeze(obs);
-    getCurrentScene(function (currentScene) {
+
+    getCurrentScene((currentScene) => {
         // Bug Fix: https://github.com/kc5nra/obs-browser/issues/72 #1
         if (typeof currentScene === 'string') {
             currentScene = JSON.parse(currentScene);
@@ -490,6 +491,8 @@
         scene.width  = currentScene.width;
         scene.height = currentScene.height;
         isReady      = true;
+
+        console.log('readied', scene)
         emit('ready');
     });
 
