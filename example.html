@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Example</title>
+        <meta charset="utf8">
+        <script>
+            // If loaded without a hash, add one
+            // This has the (undesidered) side effect of issuing a scene-change event after ready'ing
+            if (!location.hash) {
+                location.hash = "obsevent=obsSceneChanged&name=example&width=1024&height=720";
+            }
+        </script>
+        <script src="./obsabstraction.js"></script>
+        <script src="./obsstudio.js"></script>
+    </head>
+    <body>
+        <script>(function () {
+            function sceneUpdater(name) {
+                console.log(`Switching Scenes to: ${name}`);
+            }
+            const obsObject = window.obsstudio;
+            obsObject.on('ready', () => {
+                console.log('OBS Studio ready; Starting up overlay');
+                console.log(`Current Scene: ${obsObject.currentScene.name}`);
+
+                sceneUpdater(obsObject.currentScene.name);
+            });
+            obsObject.on('sceneChange', (evt) => {
+                console.log('Changing scenes');
+                sceneUpdater(`${obsObject.currentScene.name}`);
+            });
+        }())</script>
+
+    </body>
+</html>
