@@ -31,4 +31,4 @@ Include obsstudio.js in your html file prior to scripts that make use of it:
 ```
 
 # Documentation
-For API documentation and examples refer to [https://github.com/SReject/obsstudio.js/wiki](the wiki)
+For API documentation and examples refer to [the wiki](https://github.com/SReject/obsstudio.js/wiki)
